@@ -58,6 +58,10 @@ private:
         const inventory_type& packet, bc::network::channel_ptr node);
     void receive_get_blocks(const std::error_code& ec,
         const get_blocks_type& packet, bc::network::channel_ptr node);
+    void receive_get_headers(const std::error_code& ec,
+        const get_headers_type& packet, bc::network::channel_ptr node);
+    void receive_mem_pool(const std::error_code& ec,
+        const mem_pool_type& packet, bc::network::channel_ptr node);
 
     void new_tx_inventory(const hash_digest& tx_hash, 
         bc::network::channel_ptr node);

@@ -125,6 +125,11 @@ void session::new_channel(const std::error_code& ec, channel_ptr node)
         std::bind(&session::receive_get_blocks,
             this, _1, _2, node));
 
+    // Subscribe to new get_headers requests.
+    node->subscribe_get_headers(
+        std::bind(&session::receive_get_headers,
+            this, _1, _2, node));
+
     // Resubscribe to new channels.
     protocol_.subscribe_channel(
         std::bind(&session::new_channel,
@@ -270,7 +275,6 @@ void session::receive_inv(const std::error_code& ec,
                         std::bind(&session::new_tx_inventory,
                             this, inventory.hash, node));
                 }
-
                 break;
 
             case inventory_type_id::block:
@@ -280,6 +284,12 @@ void session::receive_inv(const std::error_code& ec,
                 strand_.queue(
                     std::bind(&session::new_block_inventory,
                         this, inventory.hash, node));
+                break;
+
+            case inventory_type_id::filtered_block:
+                log_debug(LOG_SESSION)
+                    << "Ignoring unsupported filtered block "
+                    << "inventory type from [" << peer << "]";
                 break;
 
             case inventory_type_id::none:
@@ -449,8 +459,39 @@ void session::receive_get_blocks(const std::error_code& ec,
     // This is disabled to prevent logging subsequent requests on this channel.
     ////// Resubscribe to new get_blocks requests.
     ////node->subscribe_get_blocks(
-    ////    std::bind(&session::handle_get_blocks,
-    ////        this, _1, _2, node));
+    ////   std::bind(&session::receive_get_blocks,
+    ////       this, _1, _2, node));
+}
+
+// We don't respond to peers making getheaders requests.
+void session::receive_get_headers(const std::error_code& ec,
+    const get_headers_type& get_headers, channel_ptr node)
+{
+    if (!node)
+        return;
+
+    if (ec)
+    {
+        log_debug(LOG_SESSION)
+            << "Failure in get headers ["
+            << node->address().to_string() << "] " << ec.message();
+        node->stop();
+        return;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // TODO: Implement.
+    // Send 2000 invs from last fork point and have memory of last inv, 
+    // ready to trigger send next 2000 once getdata done for it.
+    ///////////////////////////////////////////////////////////////////////////
+    log_info(LOG_SESSION)
+        << "Received a get headers request (IGNORED).";
+
+    // This is disabled to prevent logging subsequent requests on this channel.
+    ////// Resubscribe to new get_headers requests.
+    ////node->subscribe_get_headers(
+    ////   std::bind(&session::receive_get_headers,
+    ////       this, _1, _2, node));
 }
 
 } // namespace node

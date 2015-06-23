@@ -37,6 +37,9 @@ private:
     void receive_get_data(const std::error_code& ec,
         const get_data_type& packet, bc::network::channel_ptr node);
 
+    void receive_mem_pool(const std::error_code& code,
+        const mem_pool_type& packet, bc::network::channel_ptr node);
+
     void send_pool_tx(const std::error_code& ec, const transaction_type& tx,
         const hash_digest& tx_hash, bc::network::channel_ptr node);
     void send_chain_tx(const std::error_code& ec, const transaction_type& tx,
@@ -54,6 +57,9 @@ private:
     void send_inventory_not_found(inventory_type_id inventory_type,
         const hash_digest& hash, bc::network::channel_ptr node,
         bc::network::channel_proxy::send_handler handler);
+
+    void send_mem_pool_transactions(const std::error_code& code,
+        const hash_list& hashes, bc::network::channel_ptr node);
 
     chain::blockchain& blockchain_;
     chain::transaction_pool& tx_pool_;

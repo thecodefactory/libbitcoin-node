@@ -45,6 +45,11 @@ void responder::monitor(channel_ptr node)
     node->subscribe_get_data(
         std::bind(&responder::receive_get_data,
             this, _1, _2, node));
+
+    // Subscribe to mempool.
+    node->subscribe_mem_pool(
+        std::bind(&responder::receive_mem_pool,
+            this, _1, _2, node));
 }
 
 // TODO: consolidate to libbitcoin utils.
@@ -109,6 +114,12 @@ void responder::receive_get_data(const std::error_code& ec,
                         this, _1, _2, inventory.hash, node));
                 break;
 
+            case inventory_type_id::filtered_block:
+                log_debug(LOG_RESPONDER)
+                    << "Ignoring unsupported filtered_block "
+                    << "inventory type for [" << peer << "]";
+                break;
+
             case inventory_type_id::error:
             case inventory_type_id::none:
             default:
@@ -129,6 +140,50 @@ void responder::receive_get_data(const std::error_code& ec,
         std::bind(&responder::receive_get_data,
             this, _1, _2, node));
 }
+
+void responder::receive_mem_pool(const std::error_code& code,
+    const mem_pool_type&, channel_ptr node)
+{
+    if (code) {
+        log_warning(LOG_SESSION) << "mem_pool: " << code.message();
+        return;
+    }
+
+    blockchain_.fetch_mem_pool_transaction_hashes(
+        std::bind(&responder::send_mem_pool_transactions,
+                  this, _1, _2, node));
+
+    node->subscribe_mem_pool(
+        std::bind(&responder::receive_mem_pool,
+                  this, _1, _2, node));
+}
+
+void responder::send_mem_pool_transactions(const std::error_code& code,
+    const hash_list& hashes, channel_ptr node)
+{
+    if (code)
+    {
+        log_error(LOG_SESSION) << "send_mem_pool_transactions failed: "
+            << code.message();
+            return;
+    }
+    BITCOIN_ASSERT(node);
+    log_debug(LOG_SESSION) << "SENDING " << hashes.size() << " TRANSACTIONS FROM MEMPOOL";
+
+    inventory_type blocks_inv;
+    for (const auto& hash: hashes)
+    {
+        blocks_inv.inventories.push_back(
+        {
+            inventory_type_id::block,
+            hash
+        });
+    }
+    log_debug(LOG_SESSION) << "SENDING " << blocks_inv.inventories.size() << " INVENTORIES FROM MEMPOOL";
+
+    node->send(blocks_inv, [](const std::error_code&) {});
+}
+
 
 void responder::send_pool_tx(const std::error_code& ec,
     const transaction_type& tx, const hash_digest& tx_hash, channel_ptr node)
@@ -316,15 +371,14 @@ void responder::send_inventory_not_found(inventory_type_id type_id,
     if (!node)
         return;
 
-    // There's currently no way to send this message.
-    //const inventory_vector_type block_inventory
-    //{
-    //    type_id,
-    //    hash
-    //};
+    const inventory_vector_type block_inventory
+    {
+       type_id,
+       hash
+    };
 
-    //const get_data_type not_found{ { block_inventory } };
-    //node->send(not_found, handler);
+    const get_data_type not_found{ { block_inventory } };
+    node->send(not_found, handler);
 }
 
 } // node
