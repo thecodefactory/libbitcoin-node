@@ -47,9 +47,9 @@ void responder::monitor(channel_ptr node)
             this, _1, _2, node));
 
     // Subscribe to mempool.
-    node->subscribe_mem_pool(
-        std::bind(&responder::receive_mem_pool,
-            this, _1, _2, node));
+    /* node->subscribe_mem_pool( */
+    /*     std::bind(&responder::receive_mem_pool, */
+    /*         this, _1, _2, node)); */
 }
 
 // TODO: consolidate to libbitcoin utils.
@@ -144,8 +144,9 @@ void responder::receive_get_data(const std::error_code& ec,
 void responder::receive_mem_pool(const std::error_code& code,
     const mem_pool_type&, channel_ptr node)
 {
+    log_info(LOG_RESPONDER) << "GOT A MEMPOOL MESSAGE";
     if (code) {
-        log_warning(LOG_SESSION) << "mem_pool: " << code.message();
+        log_warning(LOG_RESPONDER) << "mem_pool: " << code.message();
         return;
     }
 
@@ -163,12 +164,11 @@ void responder::send_mem_pool_transactions(const std::error_code& code,
 {
     if (code)
     {
-        log_error(LOG_SESSION) << "send_mem_pool_transactions failed: "
+        log_error(LOG_RESPONDER) << "send_mem_pool_transactions failed: "
             << code.message();
             return;
     }
     BITCOIN_ASSERT(node);
-    log_debug(LOG_SESSION) << "SENDING " << hashes.size() << " TRANSACTIONS FROM MEMPOOL";
 
     inventory_type blocks_inv;
     for (const auto& hash: hashes)
@@ -179,11 +179,8 @@ void responder::send_mem_pool_transactions(const std::error_code& code,
             hash
         });
     }
-    log_debug(LOG_SESSION) << "SENDING " << blocks_inv.inventories.size() << " INVENTORIES FROM MEMPOOL";
-
     node->send(blocks_inv, [](const std::error_code&) {});
 }
-
 
 void responder::send_pool_tx(const std::error_code& ec,
     const transaction_type& tx, const hash_digest& tx_hash, channel_ptr node)
@@ -377,7 +374,7 @@ void responder::send_inventory_not_found(inventory_type_id type_id,
        hash
     };
 
-    const get_data_type not_found{ { block_inventory } };
+    const not_found_type not_found{ { block_inventory } };
     node->send(not_found, handler);
 }
 

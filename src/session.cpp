@@ -103,7 +103,7 @@ void session::new_channel(const std::error_code& ec, channel_ptr node)
             return;
         }
 
-        // This should really appears as a poller log entry, since it's the
+        // This should really appear as a poller log entry, since it's the
         // only actual polling.
         log_debug(LOG_SESSION)
             << "Channel revived [" << node->address().to_string() << "]";
